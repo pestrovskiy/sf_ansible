@@ -1,0 +1,54 @@
+---
+# tasks file for nginx+php-fpm
+- name: Install EPEL Repo
+  yum:
+    name=epel-release
+    state=present
+
+- name: install nginx
+  yum:
+    name:  nginx
+    state: installed
+
+- name: install php-fpm
+  yum:
+    name:  php-fpm
+    state: installed
+
+- name: Start php-fpm
+  service:
+    name: php-fpm
+    state: started
+    enabled: yes
+
+
+- name: Ansible check directory.
+  ansible.builtin.stat:
+     path: "{{ root_dir }}"
+  register: nginx_root_dir
+
+- name: "echo if directory already existed"
+  debug:
+   msg: "nginx root rectory is already existed"
+  when: nginx_root_dir.stat.exists
+
+- name: "Ansible Create directory if not exists"
+  file:
+   path:  "{{ root_dir }}"
+   state: directory
+   mode: 0755
+   group: root
+   owner: root
+  when: nginx_root_dir.stat.exists == false
+
+- name: Write the apache config file
+  ansible.builtin.template:
+    src: /etc/ansible/roles/nginx/templates/nginx.j2
+    dest: /etc/nginx/nginx.conf
+  notify:
+  - Restart apache
+
+- name: Change nginx index.php
+  ansible.builtin.template:
+    src: /etc/ansible/roles/nginx/templates/index.php
+    dest: "{{ root_dir }}/index.php"

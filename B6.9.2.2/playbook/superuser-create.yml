@@ -1,0 +1,37 @@
+---
+- hosts: apps
+  gather_facts: no
+  tasks:
+   - name: create user2
+     ansible.builtin.user:
+       name: user2
+   - name: create user3
+     ansible.builtin.user:
+       name: user3
+
+   - name: create group
+     ansible.builtin.group:
+       name: superusers
+       state: present
+
+   - name: adding user2 to group superusers
+     ansible.builtin.user:
+        name: "user2"
+        groups: superusers
+        append: yes
+     become: yes
+   - name: adding user3 to group superussers
+     ansible.builtin.user:
+        name: "user3"
+        groups: superusers
+        append: yes
+     become: yes
+
+   - name: Validate the sudoers file before saving
+     ansible.builtin.lineinfile:
+       path: /etc/sudoers
+       state: present
+       regexp: '^%superusers ALL='
+       line: '%superusers ALL=(ALL) NOPASSWD: ALL'
+       validate: /usr/sbin/visudo -cf %s
+

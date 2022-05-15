@@ -1,0 +1,11 @@
+[app]
+10.0.0.27
+10.0.0.10
+[database]
+10.0.0.24
+[database:vars]
+ psql_data_dir=/var/db
+ pg_ver=9.6
+[web]
+10.0.0.24
+

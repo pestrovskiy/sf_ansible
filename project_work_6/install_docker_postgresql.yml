@@ -1,0 +1,102 @@
+---
+- name: Install docker
+  gather_facts: yes
+  hosts: app
+  tasks:
+    - name: Add Docker repo for CentOs
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+      when: ansible_distribution == "CentOS"
+
+
+    - name: Add Docker GPG apt Key for Ubuntu
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Add Docker Repository for Ubuntu
+      ansible.builtin.apt_repository:
+        repo: 'deb https://download.docker.com/linux/ubuntu focal stable'
+        state: present
+        filename: docker
+        update_cache: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
+      when: ansible_distribution == "Ubuntu"
+
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install Docker
+      package:
+        name: docker-ce
+        state: latest
+      when: ansible_distribution == "CentOS"
+
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      become: yes
+
+- name: Install postgresql
+  hosts: database
+  tasks:
+    - name: Add Postgresql GPG apt Key
+      ansible.builtin.apt_key:
+        url: https://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc
+        state: present
+
+    - name: Add postgresql Repository
+      ansible.builtin.apt_repository:
+        repo: 'deb https://apt.postgresql.org/pub/repos/apt/ focal-pgdg main'
+        state: present
+        filename: posgresql
+        validate_certs: no
+        update_cache: yes
+
+    - name: Install postgresql
+      apt:
+       name: postgresql-{{ pg_ver }}
+       update_cache: yes
+
+
+    - name: Check if the new postgresql data directory exists
+      stat: path={{ psql_data_dir }}
+      register: postgresql_data_dir
+
+    - name: Create the postgresql data directory if it is not in the default place
+      file: dest={{ psql_data_dir }} owner=postgres group=postgres mode=700 recurse=yes state=directory
+
+    - name: Set the postgresql data dir 
+      ansible.builtin.lineinfile:
+        path: /etc/postgresql/{{ pg_ver }}/main/postgresql.conf
+        regexp: 'data_directory'
+        line: data_directory = '{{ psql_data_dir }}'
+
+    - name: Start PostgreSQL
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
